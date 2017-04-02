@@ -3,6 +3,6 @@
 Simple mesh network
 
 <b> Authors </b>: <br>
-Anton Chashchin,<br>
-Sergey Mitronin,<br>
-Dmitry Koltsov
+Anton Chashchin IU5-63,<br>
+Sergey Mitronin IU5-62,<br>
+Dmitry Koltsov IU5-62
