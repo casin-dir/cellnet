@@ -12,9 +12,10 @@
 5. ```$: source env/bin/activate```
 6. ```$: pip install -r requirements.txt ```
 7. mark _env/lib/python3.5/site-packages_ as source root
-8. ```$: python src/main.py &  ```
+8. ```$: python src/main.py ```
 
-**Authors**: <br>
-Anton Chashchin IU5-63,<br>
-Sergey Mitronin IU5-62,<br>
-Dmitry Koltsov IU5-62
+
+**Authors**:
+* Anton Chashchin IU5-63
+* Sergey Mitronin IU5-62
+* Dmitry Koltsov IU5-62
