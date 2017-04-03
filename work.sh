@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-source env/bin/activate
-echo "> virtual env activated"
+
+echo ""
+echo "> pulling ..."
+git pull >> /dev/null
+echo "> activating virtual env ..."
+. env/bin/activate >> /dev/null
+echo "> installing requirements ..."
 pip install -r requirements.txt >> /dev/null
-echo "> requirements downloaded"
 echo "> READY"
+echo ""
