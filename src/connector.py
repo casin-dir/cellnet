@@ -1,11 +1,39 @@
+import serial
+
+
 class Connector:
     def __init__(self):
-        self.port = 'some port'
-        devList = usb.core.find(find_all=True)
-        print(devList)
+        self.port_name_in = '/dev/usb_in'
+        self.port_name_out = '/dev/usb_out'
+        self.port_speed = 115200
+        self.port_timeout = 3
+        self.port_in = None
+        self.port_out = None
 
-    def connect(self, port_name):
-        print('connecting...' + port_name)
+    def connect(self):
+        self.port_in = serial.Serial(
+            self.port_name_in,
+            timeout=self.port_timeout,
+            baudrate=self.port_speed
+        )
+        self.port_out = serial.Serial(
+            self.port_name_out,
+            timeout=self.port_timeout,
+            baudrate=self.port_speed
+        )
 
-    def find_ports(self):
-        print('finding')
+    def disconnect(self):
+        self.port_in.close()
+        self.port_out.close()
+
+    def send_data(self, data):
+        encoded_data = data.encode('utf-8')
+        print('Data will be send: ' + encoded_data)
+        bytes_in = self.port_in.write(encoded_data)
+        print('Bytes has been sent: ' + bytes_in)
+        res = self.port_out.read()
+        print('Result: ' + res)
+
+
+
+

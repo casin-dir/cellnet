@@ -11,6 +11,6 @@ git pull origin $2
 echo "> pushing updates ..."
 git push origin $2
 echo "> deactivating virtual env ..."
-. deactivate
+deactivate
 echo "> READY"
 echo ""
