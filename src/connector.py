@@ -28,10 +28,10 @@ class Connector:
 
     def send_data(self, data):
         encoded_data = data.encode('utf-8')
-        print('Data will be send: ' + encoded_data)
+        print('Data will be send: ' + data)
         bytes_in = self.port_in.write(encoded_data)
-        print('Bytes has been sent: ' + bytes_in.decode('utf-8'))
-        res = self.port_out.read()
+        print('Bytes has been sent: ' + str(bytes_in))
+        res = self.port_out.readall()
         print('Result: ' + res.decode('utf-8'))
 
 
