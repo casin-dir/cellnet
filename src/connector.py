@@ -3,8 +3,8 @@ import serial
 
 class Connector:
     def __init__(self):
-        self.port_name_in = '/dev/usb_in'
-        self.port_name_out = '/dev/usb_out'
+        self.port_name_in = 'COM1'
+        self.port_name_out = 'COM2'
         self.port_speed = 115200
         self.port_timeout = 3
         self.port_in = None
