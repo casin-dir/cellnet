@@ -1,3 +1,15 @@
+# from connector import Connector
+#
+#
+# if __name__ == '__main__':
+#     print('Welcome to CellNet!')
+    # connector = Connector()
+    # connector.connect()
+    # connector.send_data('Hello Casin!\n How are you?', 'Hello i\'m fine')
+    # connector.disconnect()
+
+
+
 import serial
 
 
@@ -26,13 +38,18 @@ class Connector:
         self.port_in.close()
         self.port_out.close()
 
-    def send_data(self, data):
-        encoded_data = data.encode('utf-8')
-        print('Data will be send: ' + data)
-        bytes_in = self.port_in.write(encoded_data)
-        print('Bytes has been sent: ' + str(bytes_in))
-        res = self.port_out.readall()
-        print('Result: ' + res.decode('utf-8'))
+    def send_data(self, data1, data2):
+        encoded_data_1 = data1.encode('utf-8')
+        encoded_data_2 = data2.encode('utf-8')
+
+        self.port_in.write(encoded_data_1)
+        self.port_out.write(encoded_data_2)
+        res_in = self.port_in.readall()
+        res_out = self.port_out.readall()
+
+        print('Result in: ' + res_in.decode('utf-8'))
+        print('Result out: ' + res_out.decode('utf-8'))
+
 
 
 
