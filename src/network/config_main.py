@@ -1,5 +1,8 @@
 ARG_DELIMITER = '&'
-MESSAGE_DELIMITER = ', '
+
+STOP_PROCESS_COMMAND = 'STOP'
+
+PROCESS_FILE_PATH = '../client/app.py'
 
 COMMANDS = {
     'start': 'start',

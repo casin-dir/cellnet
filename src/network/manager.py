@@ -1,7 +1,8 @@
 import sys
 import config_main
 import config_connections
-from client import app
+import os
+import subprocess
 
 
 class CellNet:
@@ -10,7 +11,7 @@ class CellNet:
         self.cfg_connections = cfg_connections
         self.clients_ports = []
         self.clients = {}
-        self.active = False
+        self.count_active = 0
         for name, ports in enumerate(self.cfg_connections.CLIENTS_PORTS):
             client_ports = list(map(lambda x: self.cfg_connections.PORT_PREFIX + x, ports))
             client = {
@@ -43,6 +44,7 @@ class CellNet:
                 self.run_client(client_name)
             elif command == self.cfg_main.COMMANDS['exit']:
                 print('Goodbye!')
+                self.stop()
                 sys.exit(0)
             elif command == self.cfg_main.COMMANDS['help']:
                 self.print_help()
@@ -53,25 +55,27 @@ class CellNet:
                 print('Use "{0}"'.format(self.cfg_main.COMMANDS['help']))
 
     def start(self):
-        if self.active:
+        if self.count_active > 0:
             print('ERROR: Network has already been started.')
             return
-
-        print('Starting...')
+        for client_name in self.clients:
+            self.run_client(client_name)
 
     def stop(self):
-        if not self.active:
+        if not self.count_active > 0:
             print('ERROR: Network has already been stopped.')
             return
 
-        print('Stopping...')
+        for client_name in self.clients:
+            self.shutdown_client(client_name)
 
     def restart(self):
         self.stop()
         self.start()
 
     def print_status(self):
-        print('\nNetwork status: {0}'.format('Active' if self.active else 'Inactive'))
+        print('\nNetwork status: {0}'.format('Active' if self.count_active > 0 else 'Inactive'))
+        print('Count active clients: {0}'.format(str(self.count_active)))
         print('Clients:')
         for client_name in self.clients:
             client = self.clients[client_name]
@@ -92,7 +96,14 @@ class CellNet:
             print('Client has already been offline')
             return
 
-        print('Shutting down client...')
+        print('Shutting down client "{0}" ...'.format(name))
+        client['process'].stdin.write(
+            self.cfg_main.STOP_PROCESS_COMMAND.encode('utf-8') + b'\n'
+        )
+        client['process'].stdin.close()
+        # client['process'] = None
+        client['online'] = False
+        self.count_active -= 1
 
     def run_client(self, name):
         client = self.clients.get(name)
@@ -104,54 +115,30 @@ class CellNet:
             print('Client has already been online')
             return
 
-        print('Running client...')
+        print('Starting client "{0}" ...'.format(name))
+        path = os.path.relpath(
+            self.cfg_main.PROCESS_FILE_PATH,
+            start=os.getcwd()
+        )
+        ports = self.cfg_main.ARG_DELIMITER.join(client['ports'])
+        command = [
+            sys.executable,
+            path,
+            ports,
+            self.cfg_main.ARG_DELIMITER,
+            self.cfg_main.STOP_PROCESS_COMMAND
+        ]
+        pipe = subprocess.Popen(command, stdin=subprocess.PIPE)
+        client['process'] = pipe
+        client['online'] = True
+        self.count_active += 1
 
     def print_help(self):
         for command in self.cfg_main.COMMANDS:
             print(self.cfg_main.COMMANDS[command])
 
 
-
-
-
-
-
-# def command_manager():
-#     while True:
-#         command = input('> ')
-#         if command == 'stop':
-#             sys.exit(0)
-#         elif command == 'clients':
-#             print('Clients will be here ...')
-#         else:
-#             print('ERROR: Unsupported command!')
-
-
 if __name__ == '__main__':
-    # print('Wellcome to CellNet!')
-    #
-    # port_prefix = config_connections.PORT_PREFIX
-    # clients_ports = config_connections.CLIENTS_PORTS
-    # arg_delimiter = config_main.ARG_DELIMITER
-    #
-    # for client_num, client_ports in enumerate(clients_ports):
-    #
-    #     def add_prefix(name):
-    #         return port_prefix + name
-    #
-    #     user_message = '> Starting client {0} with ports: '.format(client_num)
-    #     user_message += config_main.MESSAGE_DELIMITER.join(map(add_prefix, client_ports))
-    #     print(user_message)
-    #
-    #     arg_ports = config_main.ARG_DELIMITER.join(map(add_prefix, client_ports))
-    #     # print(arg_ports)
-    #
-    # command_manager()
-
-    network = CellNet(
-        config_main,
-        config_connections
-    )
-    # network.start()
+    network = CellNet(config_main, config_connections)
 
 
