@@ -44,7 +44,6 @@ class CellNet:
                 self.run_client(client_name)
             elif command == self.cfg_main.COMMANDS['exit']:
                 print('Goodbye!')
-                self.stop()
                 sys.exit(0)
             elif command == self.cfg_main.COMMANDS['help']:
                 self.print_help()
@@ -101,7 +100,7 @@ class CellNet:
             self.cfg_main.STOP_PROCESS_COMMAND.encode('utf-8') + b'\n'
         )
         client['process'].stdin.close()
-        # client['process'] = None
+        client['process'] = None
         client['online'] = False
         self.count_active -= 1
 
