@@ -1,6 +1,7 @@
 import sys
 import time
 import threading
+from GUI.gui import start_gui
 
 
 def command_listener(stop_command):
@@ -15,9 +16,7 @@ class App:
         self.port_names = ports.split(delimiter)
 
     def run(self):
-        while True:
-            print('Running app')
-            time.sleep(1)
+       start_gui()
 
 
 if __name__ == '__main__':
