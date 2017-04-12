@@ -1,12 +1,7 @@
 # from connector import Connector
 #
 #
-# if __name__ == '__main__':
-#     print('Welcome to CellNet!')
-    # connector = Connector()
-    # connector.connect()
-    # connector.send_data('Hello Casin!\n How are you?', 'Hello i\'m fine')
-    # connector.disconnect()
+
 
 
 
@@ -53,6 +48,10 @@ class Connector:
 
 
 
-
+if __name__ == '__main__':
+    connector = Connector()
+    connector.connect()
+    connector.send_data('Hello Casin!\n How are you?', 'Hello i\'m fine')
+    connector.disconnect()
 
 
