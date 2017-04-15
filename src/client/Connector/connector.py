@@ -1,81 +1,135 @@
 import serial
+from package import Package
 import threading
+import time
 
 
 class Connector:
+
+    cmd = {
+        'open request': 'o',
+        'accept': 'y',
+        'cancel': 'n',
+        'close request': 'c',
+        'data': 'd',
+        'repeat': 'r',
+        'hard break': 'b',
+        'resolve': '?'
+    }
+
+    last_direction = None
+
+    port_speed = 115200
+    port_timeout = 3
+    sleep_time = 0.2
+
+    active = False
+    is_open = False
+    port = None
+
+    buffer_in = None
+    buffer_out = None
+
     def __init__(self, port_name):
         self.port_name = port_name
-        self.port_speed = 115200
-        self.port_timeout = 3
-        self.frame_size = 64
-        self.active = False
-        self.queue_in = []
-        self.queue_out = []
-        self.port = None
-        self.listener_thread = None
-        self.writer_thread = None
 
-    def is_correct(self, frame):
-        return True
+        self.opener_thread = threading.Thread(target=self.opener, args=())
+        self.opener_thread.daemon = True
+        self.opener_thread.start()
 
-    def fraction(self, data):
-        frame_list = []
-        return frame_list
-
-    def join(self, frame_list):
-        pass
-
-    def send(self, data, callback):
-        pass
-
-    def get(self):
-        if len(self.queue_in) == 0:
-            return None
-
-        return self.queue_in.pop(0)
+        self.listener_thread = threading.Thread(target=self.listener, args=())
+        self.listener_thread.daemon = True
+        self.listener_thread.start()
 
     def open(self):
-        self.port = serial.Serial(
-            self.port_name,
-            timeout=self.port_timeout,
-            baudrate=self.port_speed
-        )
         self.active = True
-        self.listener_thread = threading.Thread(target=self.listener)
-        self.listener_thread.daemon = True
-        self.listener_thread.start()
-        self.listener_thread = threading.Thread(target=self.writer)
-        self.listener_thread.daemon = True
-        self.listener_thread.start()
+
+    def opener(self):
+        while True:
+            if not self.active:
+                continue
+
+            if self.is_open:
+                continue
+
+            try:
+                self.port = serial.Serial(
+                    self.port_name,
+                    timeout=self.port_timeout,
+                    baudrate=self.port_speed
+                )
+                self.is_open = True
+            except:
+                self.is_open = False
+                self.port = None
+
+            time.sleep(self.sleep_time)
 
     def close(self):
         self.active = False
-        self.port.close()
+        self.port = None
+        self.is_open = None
 
     def listener(self):
-        while self.active:
-            data = self.port.read(self.frame_size)
-            if self.is_correct(data):
+        while True:
+            if not self.active or not self.is_open:
+                time.sleep(self.sleep_time)
+                continue
+
+            try:
+                bytes_data = self.port.readall()
+                package = Package(bytes_data)
+                self.package_handler(package)
+            except:
+                pass
+
+    def package_handler(self, package):
+        cmd = package.cmd()
+
+        if cmd == self.cmd['open request']:
+            if self.buffer_in is None and self.buffer_out is None:
+                self.buffer_in = ''
+        elif cmd == self.cmd['accept']:
+            pass
+        elif cmd == self.cmd['cancel']:
+            pass
+        elif cmd == self.cmd['close request']:
+            pass
+        elif cmd == self.cmd['data']:
+            pass
+        elif cmd == self.cmd['repeat']:
+            pass
+        elif cmd == self.cmd['hard break']:
+            pass
+        else:
+            pass
+
+
+
+
+    def sender(self, package):
+        if self.active and self.is_open:
+            try:
+                self.port.write(package.raw())
+            except:
                 pass
 
 
+    def send(self, data, callback_out):
+        pass
 
-    def writer(self):
-        while self.active:
-            pass
+    def get(self):
+        if len(self.array_in) == 0:
+            return None
 
-    # encoded_data_1 = data1.encode('utf-8')
-    # encoded_data_2 = data2.encode('utf-8')
-    #
-    # self.port_in.write(encoded_data_1)
-    # self.port_out.write(encoded_data_2)
-    # res_in = self.port_in.readall()
-    # res_out = self.port_out.readall()
-    #
-    # print('Result in: ' + res_in.decode('utf-8'))
-    # print('Result out: ' + res_out.decode('utf-8'))
+        return self.array_out.pop(0)
+
+
 
 
 if __name__ == '__main__':
-    connector = Connector('COM1')
-    connector.open()
+    pass
+
+
+
+

@@ -2,9 +2,6 @@
 #
 #
 
-
-
-
 import serial
 
 
