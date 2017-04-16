@@ -68,7 +68,7 @@ class Connector:
     def close(self):
         self.active = False
         self.port = None
-        self.is_open = None
+        self.is_open = False
 
     def listener(self):
         while True:
