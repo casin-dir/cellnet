@@ -1,4 +1,5 @@
 import serial
+from frame import Frame
 from package import Package
 import threading
 import time
@@ -6,7 +7,7 @@ import time
 
 class Connector:
 
-    cmd = {
+    __cmd = {
         'open request': 'o',
         'accept': 'y',
         'cancel': 'n',
@@ -17,118 +18,197 @@ class Connector:
         'resolve': '?'
     }
 
-    last_direction = None
+    __next_direction = 'in'
 
-    port_speed = 115200
-    port_timeout = 3
-    sleep_time = 0.2
+    __current_direction = None
+    __current_package = None
 
-    active = False
-    is_open = False
-    port = None
+    __port_speed = 115200
+    __port_timeout = 3
+    __sleep_time = 0.2
 
-    buffer_in = None
-    buffer_out = None
+    __active = False
+    __is_open = False
+    __port = None
 
-    def __init__(self, port_name):
-        self.port_name = port_name
+    __array_out = []
 
-        self.opener_thread = threading.Thread(target=self.opener, args=())
-        self.opener_thread.daemon = True
-        self.opener_thread.start()
+    def __init__(self, port_name, callback_in, callback_port_status):
+        self.__port_name = port_name
+        self.__callback_in = callback_in
+        self.__callback_port_status = callback_port_status
 
-        self.listener_thread = threading.Thread(target=self.listener, args=())
-        self.listener_thread.daemon = True
-        self.listener_thread.start()
+        self.__opener_thread = threading.Thread(target=self.__opener, args=())
+        self.__opener_thread.daemon = True
+        self.__opener_thread.start()
+
+        self.__listener_thread = threading.Thread(target=self.__listener, args=())
+        self.__listener_thread.daemon = True
+        self.__listener_thread.start()
 
     def open(self):
-        self.active = True
-
-    def opener(self):
-        while True:
-            if not self.active:
-                continue
-
-            if self.is_open:
-                continue
-
-            try:
-                self.port = serial.Serial(
-                    self.port_name,
-                    timeout=self.port_timeout,
-                    baudrate=self.port_speed
-                )
-                self.is_open = True
-            except:
-                self.is_open = False
-                self.port = None
-
-            time.sleep(self.sleep_time)
+        self.__active = True
+        self.__callback_port_status(False)
 
     def close(self):
-        self.active = False
-        self.port = None
-        self.is_open = False
+        self.__active = False
+        self.__is_open = False
+        try:
+            self.__port.close()
+            self.__callback_port_status(False)
+        except:
+            pass
+        self.__port = None
 
-    def listener(self):
+    def send(self, data, callback_status):
+        if self.status() is True:
+            package = Package(data, callback_status)
+            self.__array_out.append(package)
+        else:
+            callback_status(False)
+
+    def status(self):
+        return self.__active and self.__is_open
+
+    def __opener(self):
         while True:
-            if not self.active or not self.is_open:
-                time.sleep(self.sleep_time)
+            if not self.__active:
+                continue
+
+            if self.__is_open:
                 continue
 
             try:
-                bytes_data = self.port.readall()
-                package = Package(bytes_data)
-                self.package_handler(package)
+                self.__port = serial.Serial(
+                    self.__port_name,
+                    timeout=self.__port_timeout,
+                    baudrate=self.__port_speed
+                )
+                self.__is_open = True
+                self.__callback_port_status(True)
             except:
-                pass
+                self.__is_open = False
+                self.__port = None
 
-    def package_handler(self, package):
-        cmd = package.cmd()
+            time.sleep(self.__sleep_time)
 
-        if cmd == self.cmd['open request']:
-            if self.buffer_in is None and self.buffer_out is None:
-                self.buffer_in = ''
-        elif cmd == self.cmd['accept']:
-            pass
-        elif cmd == self.cmd['cancel']:
-            pass
-        elif cmd == self.cmd['close request']:
-            pass
-        elif cmd == self.cmd['data']:
-            pass
-        elif cmd == self.cmd['repeat']:
-            pass
-        elif cmd == self.cmd['hard break']:
-            pass
-        else:
-            pass
-
-
-
-
-    def sender(self, package):
-        if self.active and self.is_open:
+    def __listener(self):
+        while True:
+            if not self.__active or not self.__is_open:
+                time.sleep(self.__sleep_time)
+                continue
             try:
-                self.port.write(package.raw())
+                self.__read()
             except:
                 pass
 
+    def __sender(self, frame):
+        if self.__active and self.__is_open:
+            try:
+                self.__port.write(frame.raw())
+                return True
+            except:
+                return False
 
-    def send(self, data, callback_out):
-        pass
+        return False
 
-    def get(self):
-        if len(self.array_in) == 0:
-            return None
+    def __read(self):
 
-        return self.array_out.pop(0)
+        if self.__current_direction is None:
+            self.__start_connection()
+            return
 
+        if self.__current_direction == 'in':
+            self.__continue_connection()
 
+        if self.__current_direction == 'out':
+            self.__continue_connection()
 
+    def __read_in(self):
+        if self.__active and self.__is_open:
+            try:
+                bytes_data = self.__port.readall()
+                return bytes_data if len(bytes_data) > 0 else None
+            except:
+                pass
+        self.__connection_error()
+
+    def __read_out(self):
+        return self.__array_out.pop(0) if len(self.__array_out) > 0 else None
+
+    def __read_priority(self, direction):
+        if direction == 'in':
+            bytes_data = self.__read_in()
+            if bytes_data is not None:
+                package = Package()
+                package.extend_bytes(bytes_data)
+                return package
+
+        if direction == 'out':
+            package = self.__read_out()
+            if package is not None:
+                return package
+
+        return None
+
+    def __connection_error(self):
+        self.__callback_port_status(False)
+        self.close()
+        self.open()
+        self.__current_direction = None
+        self.__current_package = None
+
+    def __start_connection(self):
+        package = self.__read_priority(self.__next_direction)
+
+        if package is None:
+            return package
+
+        if package.type() == 'in':
+            self.__next_direction = 'out'
+
+        if package.type() == 'out':
+            self.__next_direction = 'in'
+
+        self.__current_package = package
+        self.__current_direction = package.type()
+        frame_to_send = self.__current_package.next_frame()
+        self.__sender(frame_to_send)
+
+    def __continue_connection(self):
+        bytes_data = self.__read_in()
+        if bytes_data is None:
+            return
+
+        self.__current_package.extend_bytes(bytes_data)
+        frame_to_send = self.__current_package.next_frame()
+        if frame_to_send is None:
+            self.__current_direction = None
+            self.__current_package = None
+        else:
+            self.__sender(frame_to_send)
 
 if __name__ == '__main__':
-    pass
+
+    test_data = '192.168.0.1#Hello Casin, how are you?'
+
+    def callback_in_test(package):
+        data = package.data()
+        time_s = package.time()
+        print('Incoming package:\n{0}\nTime: {1}'.format(data, time_s))
+
+    def callback_status_test(package):
+        data = package.data()
+        time_s = package.time()
+        print('Package sent with status: {0}\nTime: {1}'.format(data, time_s))
+
+    connector = Connector('COM1', callback_in_test)
+    connector.send(test_data, callback_status_test)
+
+    while True:
+        # print('waiting')
+        time.sleep(1)
+
 
 
 

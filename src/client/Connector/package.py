@@ -1,155 +1,152 @@
-import hashlib
+from frame import Frame
+import random
 import time
 
 
 class PackageBase:
 
-    hash_info = {
-        'val': None,
-        'from': 0,
-        'to': 32
-    }
-
-    cmd_info = {
-        'val': None,
-        'to': hash_info['to'] + 1,
-        'from': hash_info['to']
-    }
-
-    time_info = {
-        'val': None,
-        'to': cmd_info['to'] + 17,
-        'from': cmd_info['to']
-    }
-
-    data_str_info = {
-        'val': None,
-        'from': time_info['to']
-    }
-
-    data_bytes_info = {
-        'val': None
-    }
-
-    raw_info = {
-        'val': None,
-        'len': None
-    }
-
     def __init__(self):
-        self.type_info = None
+        self._cmd = {
+            'open request': 'o',
+            'accept': 'y',
+            'cancel': 'n',
+            'close request': 'c',
+            'data': 'd',
+            'repeat': 'r',
+            'hard break error': '!'
+        }
+
+        self._frames_cmd = []
+
+        self._frames_data = []
+        self._expected_cmds = []
+
+        self._type = None
+
+        self._next_frame = None
+        self._last_frame = None
+
+        self._max_frame_size = 1024
+        self._service_data_size = 50
+        self._max_data_size = self._max_frame_size - self._service_data_size
+
+        self._creation_time = time.time()
 
     def type(self, val=None):
         if val is not None:
-            self.type_info = val
-        return self.type_info
+            self._type = val
 
-    def hash(self, val=None):
-        if val is not None:
-            self.hash_info['val'] = val
-        return self.hash_info['val']
+        return self._type
 
-    def cmd(self, val=None):
-        if val is not None:
-            self.cmd_info['val'] = val
-        return self.cmd_info['val']
+    def next_frame(self):
+        return self._next_frame
+
+    def _update_expected(self, arr):
+        self._expected_cmds = []
+        self._expected_cmds.extend(arr)
+        self._expected_cmds.append(self._cmd['hard break error'])
+
+    def _set_next_frame(self, frame):
+        self._last_frame = self._next_frame
+        self._next_frame = frame
 
     def time(self, val=None):
         if val is not None:
-            self.time_info['val'] = val
-        return self.time_info['val']
-
-    def data_str(self, val=None):
-        if val is not None:
-            self.data_str_info['val'] = val
-        return self.data_str_info['val']
-
-    def data_bytes(self, val=None):
-        if val is not None:
-            self.data_bytes_info['val'] = val
-        return self.data_bytes_info['val']
-
-    def raw(self, val=None):
-        if val is not None:
-            self.raw_info['val'] = val
-            self.raw_info['len'] = len(val)
-        return self.raw_info['val']
-
-    def size(self):
-        return self.raw_info['len']
-
-    @staticmethod
-    def _bytes_to_hash(bytes_data):
-        return hashlib.md5(bytes_data).hexdigest()
-
-    @staticmethod
-    def _convert(data):
-        if isinstance(data, str):
-            return data.encode('utf-8')
-
-        if isinstance(data, bytes):
-            return data.decode('utf-8')
-
-
-class PackageIn(PackageBase):
-
-    def __init__(self, package_bytes):
-        super().__init__()
-        self.type('in')
-        self.raw(package_bytes)
-        self.package_bytes_decoded = self._convert(self.raw())
-        self.__parse()
-
-    def __parse(self):
-        self.hash(self.package_bytes_decoded[
-            self.hash_info['from']:self.hash_info['to']
-        ])
-        self.cmd(self.package_bytes_decoded[
-            self.cmd_info['from']:self.cmd_info['to']
-        ])
-        self.time(float(self.package_bytes_decoded[
-            self.time_info['from']:self.time_info['to']
-        ]))
-        self.data_str(self.package_bytes_decoded[
-            self.data_str_info['from']:
-        ])
-        self.data_bytes(self._convert(self.data_str()))
-
-    def is_correct(self):
-        real_hash = self._bytes_to_hash(self.data_bytes())
-        return real_hash == self.hash()
+            self._creation_time = val
+        return self._creation_time
 
 
 class PackageOut(PackageBase):
 
-    def __init__(self, data_str, command):
+    def __init__(self, data, callback_status):
         super().__init__()
         self.type('out')
-        self.data_str(data_str)
-        self.data_bytes(self._convert(self.data_str()))
-        self.cmd(command)
-        self.time(time.time())
-        self.hash(self._bytes_to_hash(self.data_bytes()))
-        package_str = self.hash() + self.cmd() + str(self.time()) + self.data_str()
-        self.raw(self._convert(package_str))
+        self.__port_rank = random.random()
+        self.__data = data
+        self.__callback_status = callback_status
+        self._update_expected([
+            self._cmd['open request'],
+            self._cmd['accept'],
+            self._cmd['cancel']
+        ])
+        self._split_data()
+        self._set_next_frame(
+            Frame(self.__port_rank, self._cmd['open request'])
+        )
+
+    def _split_data(self):
+
+        frame_count = (len(self.__data) // self._max_data_size) + 1
+        data_cmd = self._cmd['data']
+        data_chunk = ''
+
+        for i in range(frame_count):
+            from_index = i * self._max_data_size
+            to_index = from_index + self._max_data_size
+
+            if i == frame_count - 1:
+                data_chunk = self.__data[from_index:]
+            else:
+                data_chunk = self.__data[from_index:to_index]
+
+            self._frames_data.append(Frame(data_chunk, data_cmd))
+
+    def _frame_handler(self, frame):
+
+        if not frame.is_correct():
+            self._set_next_frame(Frame('', self._cmd['repeat']))
+            return
+
+        cmd = frame.cmd()
+
+        if cmd not in self._expected_cmds:
+            self._set_next_frame(Frame('', self._cmd['hard break error']))
+            return
+
+        if cmd == self._cmd['open request']:
+            request_rank = float(frame.data_str())
+            if self.__port_rank < request_rank:
+                self._set_next_frame(Frame('', self._cmd['accept']))
+            elif self.__port_rank > request_rank:
+                self._set_next_frame(Frame('', self._cmd['cancel']))
+            elif self.__port_rank == request_rank:
+                self._set_next_frame(Frame('', self._cmd['repeat']))
 
 
-def Package(data, command='*'):
-    if isinstance(data, bytes):
-        return PackageIn(data)
-    elif isinstance(data, str):
-        return PackageOut(data, command)
-    return None
+        elif cmd == self._cmd['accept']:
+            pass
+        elif cmd == self._cmd['cancel']:
+            pass
+        elif cmd == self._cmd['close request']:
+            pass
+        elif cmd == self._cmd['data']:
+            pass
+        elif cmd == self._cmd['repeat']:
+            pass
+        elif cmd == self._cmd['hard break error']:
+            pass
+        else:
+            pass
+
+    def _call_success(self):
+        pass
+
+    def _call_error(self):
+        pass
+
+    def extend_bytes(self, bytes_data):
+        frame = Frame(bytes_data)
+        self._frame_handler(frame)
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
-    some_data = b'2ee401133bfa9ea6381eb14809bf6dd2*1492271229.123224Hello how are you???'
-    some_data2 = 'iam vaper'
-    pack = Package(some_data2, '0')
-    print(pack.cmd())
-    print(pack.time())
-    print(pack.hash())
-    print(pack.data_str())
-    print(pack.type())
-    # print(pack.is_correct())
-    print(pack.raw())
+    pack = PackageOut('#'*3265, lambda x: print(x))
+
+

@@ -48,7 +48,7 @@ class Example(QWidget):
         self.show()
 
 
-#def start_gui():
+# def start_gui():
 if __name__ == '__main__':
 
     app = QApplication(sys.argv)
