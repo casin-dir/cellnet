@@ -180,7 +180,7 @@ class Connector:
 
         self.__sender(frame_to_send)
 
-    def __close_conenction(self):
+    def __close_connection(self):
         if self.__current_direction == 'out':
             self.__array_out.pop(0)
         self.__current_direction = None
