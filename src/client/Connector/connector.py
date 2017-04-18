@@ -172,11 +172,13 @@ class Connector:
         self.__current_package.extend_bytes(bytes_data)
         frame_to_send = self.__current_package.next_frame()
 
-        if frame_to_send is None or frame_to_send.is_last_frame():
+        if frame_to_send is None:
+            return
+
+        if frame_to_send.is_last_frame():
             self.__close_conenction()
 
-        if frame_to_send is not None:
-            self.__sender(frame_to_send)
+        self.__sender(frame_to_send)
 
     def __close_conenction(self):
         if self.__current_direction == 'out':
