@@ -13,7 +13,8 @@ class PackageBase:
             'close request': 'c',
             'data': 'd',
             'repeat': 'r',
-            'hard break error': '!'
+            'hard break error': '!',
+            'empty': '*'
         }
 
         self._frames_cmd = []
@@ -105,6 +106,8 @@ class PackageOut(PackageBase):
             self._set_next_frame(Frame('', self._cmd['hard break error']).is_last_frame(True))
             return
 
+
+        # OPEN REQUEST
         if cmd == self._cmd['open request']:
             request_rank = float(frame.data_str())
             if self.__port_rank < request_rank:
@@ -113,10 +116,11 @@ class PackageOut(PackageBase):
                     self._cmd['data'], self._cmd['repeat']
                 ])
             elif self.__port_rank > request_rank:
-                self._set_next_frame(Frame('', self._cmd['cancel']))
+                self._set_next_frame(None)
 
             elif self.__port_rank == request_rank:
                 self._set_next_frame(Frame('', self._cmd['repeat']))
+
 
 
         elif cmd == self._cmd['accept']:
