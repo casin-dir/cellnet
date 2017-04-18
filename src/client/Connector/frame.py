@@ -132,12 +132,19 @@ class FrameOut(FrameBase):
         self.data_bytes(self._convert(self.data_str()))
         self.cmd(command)
         self.time(time.time())
+        self.__is_last_frame = False
         frame_str_without_hash = self.cmd() + str(self.time()) + self.data_str()
         self.hash(self._bytes_to_hash(self._convert(
             frame_str_without_hash
         )))
         frame_str = self.hash() + frame_str_without_hash
         self.raw(self._convert(frame_str))
+
+    def is_last_frame(self, val):
+        if val is not None:
+            self.__is_last_frame = val
+
+        return self.__is_last_frame
 
 
 def Frame(data, command='*'):

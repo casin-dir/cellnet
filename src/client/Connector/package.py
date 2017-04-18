@@ -1,4 +1,4 @@
-from frame import Frame
+from frame import Frame, FrameIn
 import random
 import time
 
@@ -44,7 +44,9 @@ class PackageBase:
     def _update_expected(self, arr):
         self._expected_cmds = []
         self._expected_cmds.extend(arr)
-        self._expected_cmds.append(self._cmd['hard break error'])
+        self._expected_cmds.append(
+            self._cmd['hard break error']
+        )
 
     def _set_next_frame(self, frame):
         self._last_frame = self._next_frame
@@ -58,12 +60,12 @@ class PackageBase:
 
 class PackageOut(PackageBase):
 
-    def __init__(self, data, callback_status):
+    def __init__(self, data, callback_out):
         super().__init__()
         self.type('out')
         self.__port_rank = random.random()
         self.__data = data
-        self.__callback_status = callback_status
+        self.__callback_out = callback_out
         self._update_expected([
             self._cmd['open request'],
             self._cmd['accept'],
@@ -100,15 +102,19 @@ class PackageOut(PackageBase):
         cmd = frame.cmd()
 
         if cmd not in self._expected_cmds:
-            self._set_next_frame(Frame('', self._cmd['hard break error']))
+            self._set_next_frame(Frame('', self._cmd['hard break error']).is_last_frame(True))
             return
 
         if cmd == self._cmd['open request']:
             request_rank = float(frame.data_str())
             if self.__port_rank < request_rank:
                 self._set_next_frame(Frame('', self._cmd['accept']))
+                self._update_expected([
+                    self._cmd['data'], self._cmd['repeat']
+                ])
             elif self.__port_rank > request_rank:
                 self._set_next_frame(Frame('', self._cmd['cancel']))
+
             elif self.__port_rank == request_rank:
                 self._set_next_frame(Frame('', self._cmd['repeat']))
 
@@ -137,6 +143,20 @@ class PackageOut(PackageBase):
     def extend_bytes(self, bytes_data):
         frame = Frame(bytes_data)
         self._frame_handler(frame)
+
+
+class PackageIn(PackageBase):
+    def __init__(self, bytes_data, callback_in):
+        super().__init__()
+        self.type('in')
+        self.__callback_in = callback_in
+
+
+def Package(data=None, callback=None):
+    if isinstance(data, bytes):
+        return PackageIn(data, callback)
+    if isinstance(data, str):
+        return PackageOut(data, callback)
 
 
 
