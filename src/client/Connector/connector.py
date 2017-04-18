@@ -176,7 +176,7 @@ class Connector:
             return
 
         if frame_to_send.is_last_frame():
-            self.__close_conenction()
+            self.__close_connection()
 
         self.__sender(frame_to_send)
 
