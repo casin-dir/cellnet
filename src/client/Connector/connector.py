@@ -92,12 +92,17 @@ class Connector:
                 self.__connection_error()
 
     def __sender(self, frame):
-        if self.status():
-            try:
-                self.__port.write(frame.raw())
-                return True
-            except:
-                self.__connection_error()
+
+        if not frame.is_internal():
+            if self.status():
+                try:
+                    self.__port.write(frame.raw())
+                    return True
+                except:
+                    self.__connection_error()
+
+        if frame.is_last_frame():
+            self.__close_connection()
 
     def __read(self):
 
@@ -171,13 +176,6 @@ class Connector:
 
         self.__current_package.extend_bytes(bytes_data)
         frame_to_send = self.__current_package.next_frame()
-
-        if frame_to_send is None:
-            return
-
-        if frame_to_send.is_last_frame():
-            self.__close_connection()
-
         self.__sender(frame_to_send)
 
     def __close_connection(self):

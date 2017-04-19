@@ -133,6 +133,7 @@ class FrameOut(FrameBase):
         self.cmd(command)
         self.time(time.time())
         self.__is_last_frame = False
+        self.__is_internal = False
         frame_str_without_hash = self.cmd() + str(self.time()) + self.data_str()
         self.hash(self._bytes_to_hash(self._convert(
             frame_str_without_hash
@@ -145,6 +146,12 @@ class FrameOut(FrameBase):
             self.__is_last_frame = val
 
         return self.__is_last_frame
+
+    def is_internal(self, val):
+        if val is not None:
+            self.__is_internal = val
+
+        return self.__is_internal
 
 
 def Frame(data, command='*'):

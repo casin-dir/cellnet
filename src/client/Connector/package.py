@@ -17,8 +17,6 @@ class PackageBase:
             'empty': '*'
         }
 
-        self._frames_cmd = []
-
         self._frames_data = []
         self._expected_cmds = []
 
@@ -58,13 +56,20 @@ class PackageBase:
             self._creation_time = val
         return self._creation_time
 
+    def extend_bytes(self, bytes_data):
+        frame = Frame(bytes_data)
+        self._frame_handler(frame)
+
+    def _frame_handler(self, frame):
+        pass
+
 
 class PackageOut(PackageBase):
 
     def __init__(self, data, callback_out):
         super().__init__()
         self.type('out')
-        self.__port_rank = random.random()
+        self.__port_rank = str(random.random())
         self.__data = data
         self.__callback_out = callback_out
         self._update_expected([
@@ -144,16 +149,77 @@ class PackageOut(PackageBase):
     def _call_error(self):
         pass
 
-    def extend_bytes(self, bytes_data):
-        frame = Frame(bytes_data)
-        self._frame_handler(frame)
-
 
 class PackageIn(PackageBase):
     def __init__(self, bytes_data, callback_in):
         super().__init__()
         self.type('in')
         self.__callback_in = callback_in
+        self._update_expected([
+            self._cmd['open request'],
+        ])
+        self.extend_bytes(bytes_data)
+
+    def _frame_handler(self, frame):
+
+        # REPEAT REQUEST
+        if not frame.is_correct():
+            self._set_next_frame(Frame('', self._cmd['repeat']))
+            return
+
+        # CHECK CORRECT
+        cmd = frame.cmd()
+        if cmd not in self._expected_cmds:
+            self._set_next_frame(Frame('', self._cmd['hard break error']).is_last_frame(True))
+            return
+
+        # OPEN REQUEST
+        if cmd == self._cmd['open request']:
+            self._update_expected([
+                self._cmd['data'],
+                self._cmd['repeat']
+            ])
+            next_frame = Frame('', self._cmd['accept'])
+            self._set_next_frame(next_frame)
+
+        # ACCEPT
+        elif cmd == self._cmd['accept']:
+            pass
+
+        # CANCEL
+        elif cmd == self._cmd['cancel']:
+            pass
+
+        # CLOSE
+        elif cmd == self._cmd['close request']:
+            next_frame = Frame('', self._cmd['accept'])
+            next_frame.is_last_frame(True)
+            self._set_next_frame(next_frame)
+
+        # DATA
+        elif cmd == self._cmd['data']:
+            self._update_expected([
+                self._cmd['data'],
+                self._cmd['close request'],
+                self._cmd['repeat']
+            ])
+            self._frames_data.append(frame)
+            next_frame = Frame('', self._cmd['accept'])
+            self._set_next_frame(next_frame)
+
+        # REPEAT
+        elif cmd == self._cmd['repeat']:
+            pass
+
+        # HARD BREAK ERROR
+        elif cmd == self._cmd['hard break error']:
+            next_frame = Frame('', self._cmd['empty'])
+            next_frame.is_last_frame(True)
+            next_frame.is_internal(True)
+
+        # ???
+        else:
+            pass
 
 
 def Package(data=None, callback=None):
@@ -161,16 +227,3 @@ def Package(data=None, callback=None):
         return PackageIn(data, callback)
     if isinstance(data, str):
         return PackageOut(data, callback)
-
-
-
-
-
-
-
-
-
-if __name__ == '__main__':
-    pack = PackageOut('#'*3265, lambda x: print(x))
-
-
