@@ -22,7 +22,7 @@ class FrameBase:
 
         self.time_info = {
             'val': None,
-            'to': self.cmd_info['to'] + 17,
+            'to': self.cmd_info['to'] + 10,
             'from': self.cmd_info['to']
         }
 
@@ -108,7 +108,7 @@ class FrameIn(FrameBase):
         self.cmd(self.frame_bytes_decoded[
             self.cmd_info['from']:self.cmd_info['to']
         ])
-        self.time(float(self.frame_bytes_decoded[
+        self.time(int(self.frame_bytes_decoded[
             self.time_info['from']:self.time_info['to']
         ]))
         self.data_str(self.frame_bytes_decoded[
@@ -131,7 +131,7 @@ class FrameOut(FrameBase):
         self.data_str(data_str)
         self.data_bytes(self._convert(self.data_str()))
         self.cmd(command)
-        self.time(time.time())
+        self.time(round(time.time()))
         self.__is_last_frame = False
         self.__is_internal = False
         frame_str_without_hash = self.cmd() + str(self.time()) + self.data_str()

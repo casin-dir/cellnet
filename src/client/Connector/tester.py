@@ -11,8 +11,9 @@ def callback_in():
 
 def test_1():
 
-    for i in range(1000):
+    for i in range(1):
         simple_data = 'Hello Casin, iam simple data'
+
         pack_out = Package(simple_data, callback_out)
         frame_out = pack_out.next_frame()
 
@@ -22,7 +23,27 @@ def test_1():
 
         frame_in = pack_in.next_frame()
 
-        print(frame_in.cmd())
+        raw = frame_in.raw()
+
+        pack_out.extend_bytes(raw)
+
+        frame_out = pack_out.next_frame()
+
+        raw = frame_out.raw()
+
+        pack_in.extend_bytes(raw)
+
+        frame_in = pack_in.next_frame()
+
+        raw = frame_in.raw()
+
+        pack_out.extend_bytes(raw)
+
+        frame_out = pack_out.next_frame()
+
+        print(frame_out.cmd())
+
+
 
 
 if __name__ == '__main__':

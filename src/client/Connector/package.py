@@ -29,7 +29,7 @@ class PackageBase:
         self._service_data_size = 50
         self._max_data_size = self._max_frame_size - self._service_data_size
 
-        self._creation_time = time.time()
+        self._creation_time = round(time.time())
 
     def type(self, val=None):
         if val is not None:
@@ -127,9 +127,25 @@ class PackageOut(PackageBase):
                 self._set_next_frame(Frame('', self._cmd['repeat']))
 
 
-
+        # ACCEPT
         elif cmd == self._cmd['accept']:
-            pass
+
+            if self._next_frame.cmd() == self._cmd['open request']:
+                next_frame = self._frames_data.pop(0) if len(self._frames_data) > 0 else Frame('', self._cmd['close request'])
+                self._set_next_frame(next_frame)
+                self._update_expected([
+                    self._cmd['accept'],
+                    self._cmd['cancel'],
+                    self._cmd['repeat'],
+                ])
+
+            if self._next_frame.cmd() == self._cmd['close request']:
+                next_frame = Frame('', self._cmd['empty'])
+                next_frame.is_last_frame(True)
+                next_frame.is_internal(True)
+                self._set_next_frame(next_frame)
+
+
         elif cmd == self._cmd['cancel']:
             pass
         elif cmd == self._cmd['close request']:
