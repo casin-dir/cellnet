@@ -38,6 +38,7 @@ class PackageBase:
         return self._type
 
     def next_frame(self):
+        self._last_frame = self._next_frame
         return self._next_frame
 
     def _update_expected(self, arr):
@@ -108,9 +109,11 @@ class PackageOut(PackageBase):
         cmd = frame.cmd()
 
         if cmd not in self._expected_cmds:
-            self._set_next_frame(Frame('', self._cmd['hard break error']).is_last_frame(True))
+            next_frame = Frame('', self._cmd['hard break error'])
+            next_frame.is_last_frame(True)
+            self.__call_error('Unexpected command')
+            self._set_next_frame(next_frame)
             return
-
 
         # OPEN REQUEST
         if cmd == self._cmd['open request']:
@@ -121,30 +124,41 @@ class PackageOut(PackageBase):
                     self._cmd['data'], self._cmd['repeat']
                 ])
             elif self.__port_rank > request_rank:
-                self._set_next_frame(None)
+                next_frame = Frame('', self._cmd['empty'])
+                next_frame.is_internal()
+                self._set_next_frame(next_frame)
+                self._update_expected([
+                    self._cmd['accept'], self._cmd['repeat']
+                ])
 
             elif self.__port_rank == request_rank:
-                self._set_next_frame(Frame('', self._cmd['repeat']))
-
+                self.__port_rank = str(random.random())
+                next_frame = Frame(self.__port_rank, self._cmd['repeat'])
+                self._set_next_frame(next_frame)
+                self._update_expected([
+                    self._cmd['open request']
+                ])
 
         # ACCEPT
         elif cmd == self._cmd['accept']:
 
-            if self._next_frame.cmd() == self._cmd['open request']:
-                next_frame = self._frames_data.pop(0) if len(self._frames_data) > 0 else Frame('', self._cmd['close request'])
+            if self._last_frame.cmd() == self._cmd['open request'] or \
+                            self._last_frame.cmd() == self._cmd['data']:
+
+                next_frame = self._frames_data.pop(0) if len(self._frames_data) > 0 else \
+                    Frame('', self._cmd['close request'])
                 self._set_next_frame(next_frame)
                 self._update_expected([
                     self._cmd['accept'],
                     self._cmd['cancel'],
                     self._cmd['repeat'],
                 ])
+                return
 
-            if self._next_frame.cmd() == self._cmd['close request']:
-                next_frame = Frame('', self._cmd['empty'])
-                next_frame.is_last_frame(True)
-                next_frame.is_internal(True)
-                self._set_next_frame(next_frame)
-
+            if self._last_frame.cmd() == self._cmd['close request']:
+                self.__call_end()
+                self.__call_success()
+                return
 
         elif cmd == self._cmd['cancel']:
             pass
@@ -159,11 +173,17 @@ class PackageOut(PackageBase):
         else:
             pass
 
-    def _call_success(self):
-        pass
+    def __call_end(self):
+        next_frame = Frame('', self._cmd['empty'])
+        next_frame.is_last_frame(True)
+        next_frame.is_internal(True)
+        self._set_next_frame(next_frame)
 
-    def _call_error(self):
-        pass
+    def __call_success(self):
+        self.__callback_out(True, None)
+
+    def __call_error(self, error_mes='Unknown error'):
+        self.__callback_out(True, error_mes)
 
 
 class PackageIn(PackageBase):
@@ -211,6 +231,7 @@ class PackageIn(PackageBase):
             next_frame = Frame('', self._cmd['accept'])
             next_frame.is_last_frame(True)
             self._set_next_frame(next_frame)
+            self._call_incoming()
 
         # DATA
         elif cmd == self._cmd['data']:
@@ -236,6 +257,13 @@ class PackageIn(PackageBase):
         # ???
         else:
             pass
+
+    def _call_incoming(self):
+        result = ''
+        for frame in self._frames_data:
+            result += frame.data_str()
+
+        self.__callback_in(result)
 
 
 def Package(data=None, callback=None):

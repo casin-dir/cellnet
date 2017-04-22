@@ -141,13 +141,13 @@ class FrameOut(FrameBase):
         frame_str = self.hash() + frame_str_without_hash
         self.raw(self._convert(frame_str))
 
-    def is_last_frame(self, val):
+    def is_last_frame(self, val=None):
         if val is not None:
             self.__is_last_frame = val
 
         return self.__is_last_frame
 
-    def is_internal(self, val):
+    def is_internal(self, val=None):
         if val is not None:
             self.__is_internal = val
 
