@@ -34,6 +34,7 @@ class Connector:
         self.__listener_thread = threading.Thread(target=self.__listener, args=())
         self.__listener_thread.daemon = True
         self.__listener_thread.start()
+        print('init')
 
     def open(self):
         self.__active = True
@@ -50,6 +51,9 @@ class Connector:
         self.__port = None
 
     def send(self, data, callback_out):
+
+        print('Will send')
+
         if self.status() is True:
             package = Package(data, callback_out)
             self.__array_out.append(package)
